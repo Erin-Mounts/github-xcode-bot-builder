@@ -188,7 +188,7 @@ class BotBuilder
     statuses = {}
     results.each do |result|
       bot = OpenStruct.new result['entity']
-      bot.status_url = "http://#{@server}/xcode/bots/#{bot.tinyID}"
+      bot.status_url = "https://#{@server}/xcode/bots/#{bot.tinyID}"
       bot.latest_run_status = (bot.latestRunStatus.nil? || bot.latestRunStatus.empty?) ? :unknown : bot.latestRunStatus.to_sym
       bot.latest_run_sub_status = (bot.latestRunSubStatus.nil? || bot.latestRunSubStatus.empty?) ? :unknown : bot.latestRunSubStatus.to_sym
       if (bot.latest_run_status == :completed and integration_queued(bot.guid))
@@ -275,7 +275,12 @@ class BotBuilder
   def get_session_guid
     # Get the guid
     if (@session_guid == nil)
-      response = Net::HTTP.get_response(URI.parse("http://#{@server}/xcode"))
+      uri = URI.parse("https://#{@server}/xcode")
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true;
+      http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      request = Net::HTTP::Get.new(uri.request_uri)
+      response = http.request(request)
       cookies = CGI::Cookie::parse(response['set-cookie'])
       @session_guid = cookies['cc.collabd_session_guid']
     end
@@ -287,8 +292,11 @@ class BotBuilder
       type: 'com.apple.BatchServiceRequest' ,
       requests: service_requests
     }
-    http = Net::HTTP.new(@server)
-    request = Net::HTTP::Put.new('/collabdproxy')
+    uri = URI.parse("https://#{@server}/collabdproxy")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true;
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    request = Net::HTTP::Put.new(uri.request_uri)
     request['Content-Type'] = 'application/json; charset=UTF-8'
     request['Cookie'] = "cc.collabd_session_guid=#{@session_guid}"
     request.body = payload.to_json
